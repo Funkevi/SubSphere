@@ -23,14 +23,13 @@ class TestPlansAPI:
 
     @pytest.fixture
     def admin_token(self, client):
-        """Create admin token - reusing logic from auth tests"""
+        """Create admin token"""
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
         random_num = random.randint(100000, 999999)
         email = f"planadmin{timestamp}{random_num}@gmail.com"
         
         time.sleep(1)
         
-        # Register
         reg_response = client.post(
             "/api/auth/register",
             json={"email": email, "password": "AdminPass123!"}
@@ -41,7 +40,6 @@ class TestPlansAPI:
         
         time.sleep(1)
         
-        # Login
         login_response = client.post(
             "/api/auth/login",
             json={"email": email, "password": "AdminPass123!"}
@@ -58,7 +56,6 @@ class TestPlansAPI:
         
         time.sleep(1)
         
-        # Register
         reg_response = client.post(
             "/api/auth/register",
             json={"email": email, "password": "SubPass123!"}
@@ -69,7 +66,6 @@ class TestPlansAPI:
         
         time.sleep(1)
         
-        # Login
         login_response = client.post(
             "/api/auth/login",
             json={"email": email, "password": "SubPass123!"}
@@ -77,89 +73,97 @@ class TestPlansAPI:
         
         return login_response.json()["access_token"]
 
-    # ========== ORIGINAL TESTS ==========
+    # ========== TESTS ==========
 
     def test_list_plans_empty(self, client):
-        """Test listing plans when none exist"""
+        """Test listing plans"""
         response = client.get("/api/plans")
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
     def test_create_plan_without_auth(self, client):
-        """Test plan creation without authentication fails"""
+        """Test plan creation without auth"""
         response = client.post(
             "/api/plans",
             json={
-                "name": "Unauthorized Plan",
-                "price": 9.99,
-                "duration_days": 30
+                "plan": {  # WRAPPED
+                    "name": "Unauthorized Plan",
+                    "price": 9.99,
+                    "duration_days": 30
+                }
             }
         )
         assert response.status_code in [401, 422]
 
     def test_create_plan_invalid_data(self, client, admin_token):
-        """Test plan creation with invalid data"""
+        """Test invalid plan data"""
         response = client.post(
             "/api/plans",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={
-                "name": "Invalid Plan",
-                "price": -9.99,
-                "duration_days": 30
+                "plan": {  # WRAPPED
+                    "name": "Invalid Plan",
+                    "price": -9.99,
+                    "duration_days": 30
+                }
             }
         )
         assert response.status_code == 422
 
     def test_get_nonexistent_plan(self, client):
-        """Test getting a plan that doesn't exist"""
+        """Test getting nonexistent plan"""
         response = client.get("/api/plans/00000000-0000-0000-0000-000000000000")
         assert response.status_code == 404
 
     def test_update_plan_without_auth(self, client):
-        """Test updating plan without auth fails"""
+        """Test update without auth"""
         response = client.put(
             "/api/plans/some-id",
-            json={"name": "Updated"}
+            json={
+                "plan": {"name": "Updated"}  # WRAPPED
+            }
         )
         assert response.status_code in [401, 422]
 
     def test_delete_plan_without_auth(self, client):
-        """Test deleting plan without auth fails"""
+        """Test delete without auth"""
         response = client.delete("/api/plans/some-id")
         assert response.status_code in [401, 422]
 
-    # ========== ADDITIONAL TESTS FOR COVERAGE ==========
-
     def test_list_plans_with_filter(self, client):
-        """Test listing plans with active filter"""
+        """Test listing with filter"""
         response = client.get("/api/plans?active_only=false")
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
     def test_create_plan_by_non_admin_fails(self, client, subscriber_token):
-        """Test that non-admin cannot create plans"""
+        """Test non-admin cannot create"""
         response = client.post(
             "/api/plans",
             headers={"Authorization": f"Bearer {subscriber_token}"},
             json={
-                "name": "Subscriber Plan",
-                "price": 19.99,
-                "duration_days": 30
+                "plan": {  # WRAPPED
+                    "name": "Subscriber Plan",
+                    "price": 19.99,
+                    "duration_days": 30
+                }
             }
         )
         assert response.status_code == 403
 
     def test_update_plan_by_non_admin_fails(self, client, subscriber_token):
-        """Test that non-admin cannot update plans"""
+        """Test non-admin cannot update"""
         response = client.put(
             "/api/plans/some-id",
             headers={"Authorization": f"Bearer {subscriber_token}"},
-            json={"name": "Updated Plan"}
+            json={
+                "plan": {"name": "Updated Plan"}  # WRAPPED
+            }
         )
         assert response.status_code == 403
 
     def test_delete_plan_by_non_admin_fails(self, client, subscriber_token):
-        """Test that non-admin cannot delete plans"""
+        """Test non-admin cannot delete"""
         response = client.delete(
             "/api/plans/some-id",
             headers={"Authorization": f"Bearer {subscriber_token}"}
@@ -167,16 +171,18 @@ class TestPlansAPI:
         assert response.status_code == 403
 
     def test_update_nonexistent_plan(self, client, admin_token):
-        """Test updating a plan that doesn't exist"""
+        """Test updating nonexistent plan"""
         response = client.put(
             "/api/plans/00000000-0000-0000-0000-000000000000",
             headers={"Authorization": f"Bearer {admin_token}"},
-            json={"name": "Updated"}
+            json={
+                "plan": {"name": "Updated"}  # WRAPPED
+            }
         )
         assert response.status_code in [400, 404]
 
     def test_delete_nonexistent_plan(self, client, admin_token):
-        """Test deleting a plan that doesn't exist"""
+        """Test deleting nonexistent plan"""
         response = client.delete(
             "/api/plans/00000000-0000-0000-0000-000000000000",
             headers={"Authorization": f"Bearer {admin_token}"}
@@ -184,82 +190,89 @@ class TestPlansAPI:
         assert response.status_code in [400, 404]
 
     def test_create_plan_with_features(self, client, admin_token):
-        """Test creating plan with features"""
+        """Test creating with features"""
         response = client.post(
             "/api/plans",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={
-                "name": "Premium Plan",
-                "description": "A premium plan with features",
-                "price": 49.99,
-                "duration_days": 30,
-                "features": [
-                    {"name": "Feature 1", "description": "First feature"},
-                    {"name": "Feature 2", "description": "Second feature"}
-                ]
+                "plan": {  # WRAPPED
+                    "name": "Premium Plan",
+                    "description": "Premium features",
+                    "price": 49.99,
+                    "duration_days": 30,
+                    "features": [
+                        {"name": "Feature 1", "description": "First"},
+                        {"name": "Feature 2", "description": "Second"}
+                    ]
+                }
             }
         )
         assert response.status_code in [201, 400]
 
     def test_create_plan_minimal_fields(self, client, admin_token):
-        """Test creating plan with only required fields"""
+        """Test minimal plan creation"""
         response = client.post(
             "/api/plans",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={
-                "name": "Basic Plan",
-                "price": 9.99,
-                "duration_days": 7
+                "plan": {  # WRAPPED
+                    "name": "Basic Plan",
+                    "price": 9.99,
+                    "duration_days": 7
+                }
             }
         )
         assert response.status_code in [201, 400]
 
     def test_update_plan_partial_fields(self, client, admin_token):
-        """Test updating only some fields of a plan"""
+        """Test partial update"""
         response = client.put(
             "/api/plans/some-id",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={
-                "price": 29.99,
-                "is_active": False
+                "plan": {  # WRAPPED
+                    "price": 29.99,
+                    "is_active": False
+                }
             }
         )
         assert response.status_code in [200, 400, 404]
 
     def test_get_plan_with_invalid_uuid(self, client):
-        """Test getting plan with invalid UUID format"""
-        response = client.get("/api/plans/invalid-uuid-format")
+        """Test invalid UUID"""
+        response = client.get("/api/plans/invalid-uuid")
         assert response.status_code == 404
 
     def test_list_plans_active_only_true(self, client):
-        """Test listing only active plans"""
+        """Test active only filter"""
         response = client.get("/api/plans?active_only=true")
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
     def test_create_plan_missing_required_field(self, client, admin_token):
-        """Test creating plan without required field"""
+        """Test missing required fields"""
         response = client.post(
             "/api/plans",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={
-                "name": "Incomplete Plan"
-                # Missing price and duration_days
+                "plan": {"name": "Incomplete"}  # WRAPPED, missing price
             }
         )
         assert response.status_code == 422
 
     def test_update_plan_with_invalid_token(self, client):
-        """Test updating plan with invalid auth token"""
+        """Test update with invalid token"""
         response = client.put(
             "/api/plans/some-id",
             headers={"Authorization": "Bearer invalid-token"},
-            json={"name": "Updated"}
+            json={
+                "plan": {"name": "Updated"}  # WRAPPED
+            }
         )
         assert response.status_code in [401, 422]
 
     def test_delete_plan_with_invalid_token(self, client):
-        """Test deleting plan with invalid auth token"""
+        """Test delete with invalid token"""
         response = client.delete(
             "/api/plans/some-id",
             headers={"Authorization": "Bearer invalid-token"}
