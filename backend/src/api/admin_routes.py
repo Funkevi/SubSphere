@@ -1,19 +1,52 @@
-from fastapi import APIRouter, HTTPException, Request, Depends
+"""
+Admin-only API routes
+Protected by RBAC middleware
+"""
+from typing import Optional
+from fastapi import APIRouter, Header
 from src.auth.rbac import require_role
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+router = APIRouter(prefix="/api/admin", tags=["Admin"])
+
 
 @router.get("/dashboard")
-async def admin_dashboard(request: Request):
-    '''Admin-only endpoint'''
-
-    # Check if user has admin role
-    user_role = getattr(request.state, "user", {}).get("role")
-    if user_role != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can access this endpoint")
-
+@require_role(["admin"])
+async def admin_dashboard(authorization: Optional[str] = Header(None), token: str = None, current_user: dict = None):
+    """
+    Admin dashboard endpoint
+    
+    - Only accessible by admin role
+    - Returns admin-specific data
+    """
     return {
-        "success": True,
-        "message": "Welcome admin!",
-        "user_id": request.state.user.get("user_id")
+        "message": "Welcome to admin dashboard",
+        "user_id": current_user["user_id"] if current_user else None,
+        "role": current_user["role"] if current_user else None
+    }
+
+
+@router.get("/users")
+@require_role(["admin"])
+async def list_users(authorization: Optional[str] = Header(None), token: str = None, current_user: dict = None):
+    """
+    List all users (admin only)
+    """
+    return {
+        "message": "List of all users",
+        "admin_user": current_user["user_id"] if current_user else None
+    }
+
+
+@router.get("/stats")
+@require_role(["admin", "finance"])
+async def get_stats(authorization: Optional[str] = Header(None), token: str = None, current_user: dict = None):
+    """
+    Get system statistics
+    
+    - Accessible by admin and finance roles
+    """
+    return {
+        "message": "System statistics",
+        "accessible_by": ["admin", "finance"],
+        "current_role": current_user["role"] if current_user else None
     }
