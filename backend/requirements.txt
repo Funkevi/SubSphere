@@ -1,0 +1,48 @@
+# ============================================================================
+# SUBSCRIPTION MANAGEMENT SYSTEM - BACKEND DEPENDENCIES
+# Python 3.13+
+# Installs latest compatible versions
+# ============================================================================
+
+# -------------------- Core Framework --------------------
+fastapi                         # Web framework for building APIs
+uvicorn[standard]               # ASGI server for FastAPI
+pydantic                        # Data validation using Python type hints
+pydantic-settings               # Settings management from environment variables
+
+# -------------------- Database & Auth --------------------
+supabase                        # Supabase client for database and auth
+postgrest                       # PostgreSQL REST API client (used by Supabase)
+
+# -------------------- Authentication --------------------
+PyJWT                           # JSON Web Token implementation
+python-dotenv                   # Load environment variables from .env file
+bcrypt                          # Password hashing
+
+# -------------------- HTTP & CORS --------------------
+httpx                           # Async HTTP client (used by Supabase)
+python-multipart                # Form data parsing for file uploads
+
+# -------------------- Testing --------------------
+pytest                          # Testing framework
+pytest-asyncio                  # Async support for pytest
+pytest-cov                      # Code coverage plugin for pytest
+pytest-mock                     # Mocking support for pytest
+coverage                        # Code coverage measurement
+
+# -------------------- Code Quality --------------------
+pylint                          # Code linting and quality checks
+black                           # Code formatter
+isort                           # Import statement sorter
+flake8                          # Style guide enforcement
+
+# -------------------- Security Scanning --------------------
+bandit                          # Security vulnerability scanner
+safety                          # Dependency vulnerability checker
+
+# -------------------- Additional Utilities --------------------
+python-dateutil                 # Date/time handling utilities
+typing-extensions               # Backported typing features
+
+# -------------------- Development --------------------
+watchdog                        # File system event monitoring (for auto-reload)
