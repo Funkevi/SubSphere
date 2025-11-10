@@ -11,9 +11,7 @@ from src.auth.jwt_handler import JWTHandler
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-# ============================================
-# Request/Response Models
-# ============================================
+# ========== Models ==========
 
 class RegisterRequest(BaseModel):
     email: str
@@ -40,9 +38,21 @@ class LoginResponse(BaseModel):
     email: str = None
 
 
-# ============================================
-# SIM-45: User Registration Endpoint
-# ============================================
+# ========== Role Mapping ==========
+
+ROLE_UUID_TO_NAME = {
+    "422b8113-a6d2-404f-9cf0-9ccdf48c0c03": "subscriber",
+    "ea31bc06-c648-4361-b611-d5f028c2b117": "admin",
+    "49d95cb2-0f50-4842-8a55-a324a6a0f404": "finance"
+}
+
+
+def get_role_name(role_id: str) -> str:
+    """Convert role UUID to role name"""
+    return ROLE_UUID_TO_NAME.get(role_id, "subscriber")
+
+
+# ========== Endpoints ==========
 
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 async def register(request: RegisterRequest):
@@ -71,10 +81,6 @@ async def register(request: RegisterRequest):
     )
 
 
-# ============================================
-# SIM-52: User Login Endpoint (JWT + RBAC)
-# ============================================
-
 @router.post("/login", response_model=LoginResponse, status_code=200)
 async def login(request: LoginRequest):
     """SIM-52: User authentication with JWT and RBAC"""
@@ -93,28 +99,27 @@ async def login(request: LoginRequest):
     user_id = str(result["user"].id)
     profile_result = await supabase_auth.get_user_profile(user_id)
     
-    # Extract role (fallback to subscriber)
+    # Extract role_id (UUID)
     if profile_result["success"]:
-        user_role = profile_result["profile"].get("role_id", "subscriber")
+        role_id = profile_result["profile"].get("role_id", "422b8113-a6d2-404f-9cf0-9ccdf48c0c03")
     else:
-        user_role = "subscriber"
+        role_id = "422b8113-a6d2-404f-9cf0-9ccdf48c0c03"
     
-    # Generate JWT token
-    access_token = JWTHandler.generate_token(user_id, user_role)
+    # Convert UUID to role name
+    role_name = get_role_name(role_id)
+    
+    # Generate JWT token with role NAME (not UUID)
+    access_token = JWTHandler.generate_token(user_id, role_name)
     
     return LoginResponse(
         success=True,
         access_token=access_token,
         user_id=user_id,
-        role=user_role,
+        role=role_name,  # "admin", not UUID
         email=result["user"].email,
         message="Login successful",
     )
 
-
-# ============================================
-# Get Current User Info (NEW)
-# ============================================
 
 @router.get("/me", status_code=200)
 async def get_current_user(authorization: Optional[str] = Header(None)):

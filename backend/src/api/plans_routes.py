@@ -2,9 +2,8 @@
 Subscription Plans API Routes
 Admin-only endpoints for managing subscription plans
 """
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Header
-from typing import List
+from typing import Optional, List
+from fastapi import APIRouter, HTTPException, Header, Body
 from src.models.plan import CreatePlanRequest, UpdatePlanRequest, PlanResponse
 from src.auth.supabase_auth import supabase_auth
 from src.auth.rbac import require_role
@@ -16,32 +15,29 @@ router = APIRouter(prefix="/api/plans", tags=["plans"])
 @router.post("", response_model=PlanResponse, status_code=201)
 @require_role(["admin"])
 async def create_plan(
-    request: CreatePlanRequest,
+    plan: CreatePlanRequest = Body(..., embed=True),
     authorization: Optional[str] = Header(None),
     token: str = None,
     current_user: dict = None
 ):
     """
     SIM-71: Create subscription plan (admin only)
-    
-    - Only accessible by admin role
-    - Creates a new subscription plan with features
     """
     try:
         response = supabase_auth.service_client.table("subscription_plans").insert({
-            "name": request.name,
-            "description": request.description,
-            "price": request.price,
-            "duration_days": request.duration_days,
-            "features": [f.dict() for f in request.features],
+            "name": plan.name,
+            "description": plan.description,
+            "price": plan.price,
+            "duration_days": plan.duration_days,
+            "features": [f.dict() for f in plan.features],
             "is_active": True
         }).execute()
 
         if not response.data:
             raise HTTPException(status_code=400, detail="Failed to create plan")
 
-        plan = response.data[0]
-        return PlanResponse(**plan)
+        plan_data = response.data[0]
+        return PlanResponse(**plan_data)
 
     except HTTPException:
         raise
@@ -51,12 +47,7 @@ async def create_plan(
 
 @router.get("", response_model=List[PlanResponse])
 async def list_plans(active_only: bool = True):
-    """
-    Get all subscription plans
-    
-    - Public endpoint (no auth required)
-    - Can filter by active status
-    """
+    """Get all subscription plans"""
     try:
         query = supabase_auth.service_client.table("subscription_plans").select("*")
         
@@ -73,12 +64,7 @@ async def list_plans(active_only: bool = True):
 
 @router.get("/{plan_id}", response_model=PlanResponse)
 async def get_plan(plan_id: str):
-    """
-    Get plan by ID
-    
-    - Public endpoint
-    - Returns only active plans
-    """
+    """Get plan by ID"""
     try:
         response = supabase_auth.service_client.table("subscription_plans").select(
             "*"
@@ -99,23 +85,20 @@ async def get_plan(plan_id: str):
 @require_role(["admin"])
 async def update_plan(
     plan_id: str,
-    request: UpdatePlanRequest,
+    plan: UpdatePlanRequest = Body(..., embed=True),  # FIXED: Added embed=True
     authorization: Optional[str] = Header(None),
     token: str = None,
     current_user: dict = None
 ):
     """
     SIM-71: Update subscription plan (admin only)
-    
-    - Only accessible by admin role
-    - Updates plan details
     """
     try:
         # Build update data (exclude unset fields)
-        update_data = request.dict(exclude_unset=True)
+        update_data = plan.dict(exclude_unset=True)
         
         if "features" in update_data and update_data["features"]:
-            update_data["features"] = [f.dict() for f in request.features]
+            update_data["features"] = [f.dict() for f in plan.features]
 
         response = supabase_auth.service_client.table("subscription_plans").update(
             update_data
@@ -142,9 +125,6 @@ async def delete_plan(
 ):
     """
     SIM-71: Soft delete subscription plan (admin only)
-    
-    - Only accessible by admin role
-    - Sets is_active to False (soft delete)
     """
     try:
         response = supabase_auth.service_client.table("subscription_plans").update({
