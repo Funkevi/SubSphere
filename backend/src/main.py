@@ -3,7 +3,7 @@ Main FastAPI application entry point
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api import auth_routes, admin_routes, plans_routes
+from src.api import auth_routes, admin_routes, plans_routes, payment_routes
 from src.config import settings
 
 app = FastAPI(
@@ -24,7 +24,8 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_routes.router)
 app.include_router(admin_routes.router)
-app.include_router(plans_routes.router)  # ADD THIS LINE
+app.include_router(plans_routes.router)
+app.include_router(payment_routes.router)
 
 # Health check endpoint
 @app.get("/health")
