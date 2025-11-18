@@ -1,4 +1,4 @@
-name: SBS Full-Stack CI/CD Pipeline
+name: SBS CI/CD Pipeline
 
 on:
   push:
@@ -8,274 +8,231 @@ on:
 
 jobs:
   #=================================================================
-  # JOB 1: DETECT PROJECT STRUCTURE
+  # JOB 1: BACKEND PIPELINE
   #=================================================================
-  detect-changes:
+  backend:
     runs-on: ubuntu-latest
-    outputs:
-      backend-exists: ${{ steps.check-dirs.outputs.backend-exists }}
-      frontend-exists: ${{ steps.check-dirs.outputs.frontend-exists }}
-    steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
-      
-      - name: 🔍 Check Directory Structure
-        id: check-dirs
-        run: |
-          if [ -d "backend" ]; then
-            echo "backend-exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Backend directory found"
-          else
-            echo "backend-exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Backend directory not found"
-          fi
-          
-          if [ -d "frontend" ]; then
-            echo "frontend-exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Frontend directory found"
-          else
-            echo "frontend-exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Frontend directory not found"
-          fi
-
-  #=================================================================
-  # JOB 2: BACKEND CI/CD PIPELINE
-  #=================================================================
-  backend-pipeline:
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.backend-exists == 'true'
     
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
       
+      - name: 🔍 Check Backend Exists
+        id: backend-check
+        run: |
+          if [ -d "backend" ] && [ "$(ls -A backend 2>/dev/null)" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Backend directory found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Backend directory not found - skipping"
+          fi
+      
       - name: 🐍 Set up Python 3.13
+        if: steps.backend-check.outputs.exists == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
       
-      - name: 📦 Cache Python Dependencies
+      - name: 📦 Cache Dependencies
+        if: steps.backend-check.outputs.exists == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
       
-      #=== STAGE 1: BUILD ===
-      - name: 📦 Install Backend Dependencies
+      # STAGE 1: BUILD
+      - name: 📦 Install Dependencies
+        if: steps.backend-check.outputs.exists == 'true'
         run: |
           cd backend
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
           pip install -r requirements.txt
       
-      #=== STAGE 2: TEST ===
-      - name: 🧪 Run Unit Tests
+      # STAGE 2: TEST
+      - name: 🧪 Run Tests
+        if: steps.backend-check.outputs.exists == 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           cd backend
-          pytest tests/unit/ -v --tb=short
+          pytest tests/unit/ -v
+          pytest tests/integration/ -v
       
-      - name: 🔗 Run Integration Tests
+      # STAGE 3: COVERAGE (≥75%)
+      - name: 📊 Coverage Report
+        if: steps.backend-check.outputs.exists == 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           cd backend
-          pytest tests/integration/ -v --tb=short
+          pytest tests/ --cov=src --cov-report=html --cov-report=term --cov-fail-under=75
       
-      #=== STAGE 3: COVERAGE ===
-      - name: 📊 Generate Coverage Report
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          cd backend
-          pytest tests/ --cov=src --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=75
-      
-      - name: 💾 Upload Backend Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage-${{ github.run_number }}
-          path: backend/htmlcov/
-          retention-days: 30
-      
-      #=== STAGE 4: LINT ===
-      - name: 🔍 Run Pylint
+      # STAGE 4: LINT (≥7.5/10)
+      - name: 🔍 Code Quality
+        if: steps.backend-check.outputs.exists == 'true'
         run: |
           cd backend
           pylint src/ --fail-under=7.5 --output-format=text --reports=y | tee pylint-report.txt
       
-      - name: 💾 Upload Backend Lint Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-lint-${{ github.run_number }}
-          path: backend/pylint-report.txt
-          retention-days: 30
-      
-      #=== STAGE 5: SECURITY ===
-      - name: 🛡️ Run Bandit Security Scan
+      # STAGE 5: SECURITY
+      - name: 🛡️ Security Scan
+        if: steps.backend-check.outputs.exists == 'true'
         run: |
           cd backend
           bandit -r src/ -f json -o bandit-report.json
-      
-      - name: 🔒 Check Dependency Vulnerabilities
-        run: |
-          cd backend
           safety check --output json > safety-report.json || true
       
-      - name: 💾 Upload Backend Security Reports
+      # STAGE 6: DEPLOYMENT ARTIFACT
+      - name: 📦 Create Backend Artifact
+        if: steps.backend-check.outputs.exists == 'true'
+        run: |
+          mkdir -p artifact/backend
+          cp -r backend/src artifact/backend/
+          cp backend/requirements.txt artifact/backend/
+          cp -r backend/htmlcov artifact/coverage-backend/
+          cp backend/pylint-report.txt artifact/
+          cp backend/bandit-report.json artifact/
+          cp backend/safety-report.json artifact/
+          
+          echo "Build: $(date)" > artifact/BACKEND_BUILD.txt
+          echo "Coverage: ≥75%" >> artifact/BACKEND_BUILD.txt
+          echo "Lint: ≥7.5/10" >> artifact/BACKEND_BUILD.txt
+          echo "Commit: ${{ github.sha }}" >> artifact/BACKEND_BUILD.txt
+      
+      - name: 📤 Upload Backend Artifact
+        if: steps.backend-check.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: backend-security-${{ github.run_number }}
-          path: |
-            backend/bandit-report.json
-            backend/safety-report.json
-          retention-days: 30
-      
-      - name: ✅ Backend Pipeline Complete
-        run: echo "✅ Backend CI/CD completed successfully"
+          name: backend-artifact
+          path: artifact/
+          retention-days: 90
 
   #=================================================================
-  # JOB 3: FRONTEND CI/CD PIPELINE
+  # JOB 2: FRONTEND PIPELINE
   #=================================================================
-  frontend-pipeline:
+  frontend:
     runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.frontend-exists == 'true'
-    
-    strategy:
-      matrix:
-        node-version: ['18.x', '20.x']
     
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
       
-      - name: 🟢 Set up Node.js ${{ matrix.node-version }}
+      - name: 🔍 Check Frontend Exists
+        id: frontend-check
+        run: |
+          if [ -d "frontend" ] && [ "$(ls -A frontend 2>/dev/null)" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Frontend directory found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Frontend directory not found - skipping"
+          fi
+      
+      - name: 🟢 Set up Node.js
+        if: steps.frontend-check.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       
-      #=== STAGE 1: BUILD ===
-      - name: 📦 Install Frontend Dependencies
+      # STAGE 1: BUILD
+      - name: 📦 Install Dependencies
+        if: steps.frontend-check.outputs.exists == 'true'
         run: |
           cd frontend
           npm ci
       
-      #=== STAGE 2: LINT ===
-      - name: 🔍 Run ESLint
+      # STAGE 2: LINT
+      - name: 🔍 Code Quality
+        if: steps.frontend-check.outputs.exists == 'true'
         run: |
           cd frontend
           npm run lint
       
-      #=== STAGE 3: TEST ===
-      - name: 🧪 Run Frontend Tests
+      # STAGE 3: TEST
+      - name: 🧪 Run Tests
+        if: steps.frontend-check.outputs.exists == 'true'
         run: |
           cd frontend
           npm test -- --coverage --watchAll=false
       
-      - name: 💾 Upload Frontend Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage-${{ matrix.node-version }}-${{ github.run_number }}
-          path: frontend/coverage/
-          retention-days: 30
-      
-      #=== STAGE 4: BUILD PRODUCTION ===
-      - name: 🏗️ Build Frontend for Production
+      # STAGE 4: BUILD PRODUCTION
+      - name: 🏗️ Build Production
+        if: steps.frontend-check.outputs.exists == 'true'
         run: |
           cd frontend
           npm run build
       
-      - name: 💾 Upload Frontend Build
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build-${{ matrix.node-version }}-${{ github.run_number }}
-          path: frontend/build/
-          retention-days: 30
-      
-      #=== STAGE 5: SECURITY ===
-      - name: 🔒 Run npm audit
+      # STAGE 5: SECURITY
+      - name: 🛡️ Security Audit
+        if: steps.frontend-check.outputs.exists == 'true'
         run: |
           cd frontend
           npm audit --audit-level=moderate || echo "⚠️ Vulnerabilities found"
       
-      - name: ✅ Frontend Pipeline Complete
-        run: echo "✅ Frontend CI/CD completed successfully"
+      # STAGE 6: DEPLOYMENT ARTIFACT
+      - name: 📦 Create Frontend Artifact
+        if: steps.frontend-check.outputs.exists == 'true'
+        run: |
+          mkdir -p artifact/frontend
+          cp -r frontend/build artifact/frontend/
+          cp -r frontend/coverage artifact/coverage-frontend/
+          cp frontend/package.json artifact/frontend/
+          
+          echo "Build: $(date)" > artifact/FRONTEND_BUILD.txt
+          echo "Tests: Passed" >> artifact/FRONTEND_BUILD.txt
+          echo "ESLint: Passed" >> artifact/FRONTEND_BUILD.txt
+          echo "Commit: ${{ github.sha }}" >> artifact/FRONTEND_BUILD.txt
+      
+      - name: 📤 Upload Frontend Artifact
+        if: steps.frontend-check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-artifact
+          path: artifact/
+          retention-days: 90
 
   #=================================================================
-  # JOB 4: CREATE UNIFIED DEPLOYMENT ARTIFACT
+  # JOB 3: PIPELINE SUMMARY
   #=================================================================
-  create-deployment-artifact:
+  summary:
     runs-on: ubuntu-latest
-    needs: [detect-changes, backend-pipeline, frontend-pipeline]
-    if: always() && (needs.backend-pipeline.result == 'success' || needs.frontend-pipeline.result == 'success')
+    needs: [backend, frontend]
+    if: always() && (needs.backend.result != 'cancelled' || needs.frontend.result != 'cancelled')
     
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
       
-      - name: 📦 Download Backend Artifacts
-        if: needs.detect-changes.outputs.backend-exists == 'true'
+      - name: 📥 Download Backend Artifact
+        if: needs.backend.result == 'success'
         uses: actions/download-artifact@v4
         with:
-          pattern: backend-*
-          path: artifacts/backend/
+          name: backend-artifact
+          path: deployment/backend/
+        continue-on-error: true
       
-      - name: 📦 Download Frontend Artifacts
-        if: needs.detect-changes.outputs.frontend-exists == 'true'
+      - name: 📥 Download Frontend Artifact
+        if: needs.frontend.result == 'success'
         uses: actions/download-artifact@v4
         with:
-          pattern: frontend-*
-          path: artifacts/frontend/
+          name: frontend-artifact
+          path: deployment/frontend/
+        continue-on-error: true
       
-      - name: 📦 Create Unified Deployment Package
+      - name: 📦 Create Final Deployment Package
+        id: create-package
         run: |
-          mkdir -p deployment-artifact
+          mkdir -p deployment
           
-          # Package backend if exists
-          if [ -d "backend" ]; then
-            echo "📁 Packaging backend..."
-            mkdir -p deployment-artifact/backend
-            cp -r backend/src/ deployment-artifact/backend/
-            cp backend/requirements.txt deployment-artifact/backend/
-            
-            # Copy backend artifacts
-            cp -r artifacts/backend/backend-coverage-*/htmlcov deployment-artifact/coverage-backend/ || true
-            cp artifacts/backend/backend-lint-*/pylint-report.txt deployment-artifact/ || true
-            cp artifacts/backend/backend-security-*/*.json deployment-artifact/ || true
-            
-            echo "✅ Backend packaged"
-          fi
-          
-          # Package frontend if exists
-          if [ -d "frontend" ]; then
-            echo "📁 Packaging frontend..."
-            mkdir -p deployment-artifact/frontend
-            cp -r frontend/src/ deployment-artifact/frontend/src/ || true
-            cp frontend/package.json deployment-artifact/frontend/ || true
-            
-            # Copy frontend build (from Node 20.x build)
-            cp -r artifacts/frontend/frontend-build-20.x-*/build deployment-artifact/frontend/ || true
-            cp -r artifacts/frontend/frontend-coverage-20.x-*/coverage deployment-artifact/coverage-frontend/ || true
-            
-            echo "✅ Frontend packaged"
-          fi
-          
-          # Create README
-          cp README.md deployment-artifact/ || true
-          
-          # Create metadata
-          cat > deployment-artifact/BUILD_INFO.txt << EOF
+          # Create comprehensive build info
+          cat > deployment/BUILD_INFO.txt << EOF
           ================================================
           SBS Deployment Artifact
           ================================================
@@ -283,10 +240,12 @@ jobs:
           Commit SHA: ${{ github.sha }}
           Branch: ${{ github.ref_name }}
           Run Number: ${{ github.run_number }}
-          Backend Included: ${{ needs.detect-changes.outputs.backend-exists }}
-          Frontend Included: ${{ needs.detect-changes.outputs.frontend-exists }}
-          Backend Status: ${{ needs.backend-pipeline.result }}
-          Frontend Status: ${{ needs.frontend-pipeline.result }}
+          Triggered By: ${{ github.actor }}
+          Event: ${{ github.event_name }}
+          ================================================
+          Pipeline Results:
+          Backend:  ${{ needs.backend.result }}
+          Frontend: ${{ needs.frontend.result }}
           ================================================
           Quality Gates:
           - Backend Coverage: ≥75%
@@ -296,53 +255,54 @@ jobs:
           ================================================
           EOF
           
-          # Create archive
-          cd deployment-artifact
-          zip -r ../sbs-fullstack-deployment-${{ github.run_number }}.zip .
+          # Create deployment zip if files exist
+          cd deployment
+          if [ "$(ls -A)" ]; then
+            zip -r ../sbs-deployment-${{ github.run_number }}.zip .
+            echo "artifact-created=true" >> $GITHUB_OUTPUT
+          else
+            echo "artifact-created=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No files to package"
+          fi
       
-      - name: 📤 Upload Unified Deployment Artifact
+      - name: 📤 Upload Final Deployment Artifact
+        if: steps.create-package.outputs.artifact-created == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: sbs-deployment-${{ github.run_number }}
-          path: sbs-fullstack-deployment-${{ github.run_number }}.zip
+          path: sbs-deployment-${{ github.run_number }}.zip
           retention-days: 90
       
-      - name: ✅ Deployment Artifact Created
-        run: echo "✅ Unified deployment artifact created successfully"
-
-  #=================================================================
-  # JOB 5: PIPELINE SUMMARY
-  #=================================================================
-  pipeline-summary:
-    runs-on: ubuntu-latest
-    needs: [detect-changes, backend-pipeline, frontend-pipeline, create-deployment-artifact]
-    if: always()
-    
-    steps:
       - name: 🎉 Pipeline Summary
         run: |
           echo "================================================"
-          echo "   📊 SBS CI/CD Pipeline Summary"
+          echo "         CI/CD Pipeline Summary"
           echo "================================================"
-          echo "Backend Pipeline:  ${{ needs.backend-pipeline.result }}"
-          echo "Frontend Pipeline: ${{ needs.frontend-pipeline.result }}"
-          echo "Deployment:        ${{ needs.create-deployment-artifact.result }}"
+          echo "Backend:  ${{ needs.backend.result }}"
+          echo "Frontend: ${{ needs.frontend.result }}"
           echo "================================================"
-          echo "Backend Present:   ${{ needs.detect-changes.outputs.backend-exists }}"
-          echo "Frontend Present:  ${{ needs.detect-changes.outputs.frontend-exists }}"
-          echo "================================================"
-          echo "Run Number: ${{ github.run_number }}"
-          echo "Commit SHA: ${{ github.sha }}"
-          echo "Branch:     ${{ github.ref_name }}"
-          echo "Triggered:  ${{ github.event_name }}"
-          echo "Actor:      ${{ github.actor }}"
+          echo "Run #${{ github.run_number }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Triggered by: ${{ github.actor }}"
           echo "================================================"
           
-          # Print final status
-          if [ "${{ needs.backend-pipeline.result }}" == "success" ] && [ "${{ needs.frontend-pipeline.result }}" == "success" ]; then
+          BACKEND_STATUS="${{ needs.backend.result }}"
+          FRONTEND_STATUS="${{ needs.frontend.result }}"
+          
+          if [ "$BACKEND_STATUS" == "success" ] && [ "$FRONTEND_STATUS" == "success" ]; then
             echo "✅ ALL PIPELINES PASSED"
-          elif [ "${{ needs.backend-pipeline.result }}" == "success" ] || [ "${{ needs.frontend-pipeline.result }}" == "success" ]; then
+            exit 0
+          elif [ "$BACKEND_STATUS" == "success" ] || [ "$FRONTEND_STATUS" == "success" ]; then
             echo "⚠️ PARTIAL SUCCESS"
+            if [ "$BACKEND_STATUS" != "success" ]; then
+              echo "❌ Backend failed or skipped"
+            fi
+            if [ "$FRONTEND_STATUS" != "success" ]; then
+              echo "❌ Frontend failed or skipped"
+            fi
+            exit 0
           else
-            echo "❌ PIPELINE FAILED"
+            echo "❌ ALL PIPELINES FAILED"
+            exit 1
           fi
