@@ -1,0 +1,156 @@
+.subscriber-dashboard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 40px 20px;
+}
+
+.dashboard-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.dashboard-header h1 {
+  color: #333;
+  font-size: 36px;
+  margin-bottom: 10px;
+}
+
+.dashboard-header p {
+  color: #666;
+  font-size: 18px;
+}
+
+.loading {
+  text-align: center;
+  padding: 100px 20px;
+  font-size: 20px;
+  color: #666;
+}
+
+.error-banner,
+.success-banner,
+.info-banner {
+  max-width: 800px;
+  margin: 0 auto 30px;
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.error-banner {
+  background-color: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+}
+
+.success-banner {
+  background-color: #efe;
+  color: #3c3;
+  border: 1px solid #cfc;
+}
+
+.info-banner {
+  background-color: #eef;
+  color: #33c;
+  border: 1px solid #ccf;
+}
+
+.plans-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+}
+
+.plan-card {
+  background: white;
+  border-radius: 12px;
+  padding: 40px 30px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.plan-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.plan-card.inactive {
+  opacity: 0.6;
+}
+
+.plan-card h2 {
+  color: #333;
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.price {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #667eea;
+}
+
+.currency {
+  font-size: 24px;
+  vertical-align: top;
+}
+
+.amount {
+  font-size: 48px;
+  font-weight: 700;
+}
+
+.period {
+  font-size: 16px;
+  color: #999;
+}
+
+.description {
+  text-align: center;
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.features {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 30px;
+}
+
+.features li {
+  padding: 10px 0;
+  color: #555;
+  border-bottom: 1px solid #eee;
+}
+
+.features li:last-child {
+  border-bottom: none;
+}
+
+.subscribe-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.subscribe-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.subscribe-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,4 +1,4 @@
-name: SBS CI/CD Pipeline
+name: SBS Full-Stack CI/CD Pipeline
 
 on:
   push:
@@ -7,73 +7,47 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  ci-cd:
+  backend-pipeline:
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        python-version: ['3.13']
-    
     steps:
-      #=================================================================
-      # STAGE 1: BUILD - Setup and Install Dependencies
-      #=================================================================
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
       
-      - name: 🐍 Set up Python ${{ matrix.python-version }}
+      - name: 🐍 Set up Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.13'
       
-      - name: 📦 Cache Dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-      
-      - name: ⚙️ Install Dependencies
+      #=== STAGE 1: BUILD ===
+      - name: 📦 Install Dependencies
         run: |
           cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: ✅ Build Complete
-        run: echo "✅ Build stage passed - Dependencies installed successfully"
-      
-      #=================================================================
-      # STAGE 2: TEST - Run Unit, Integration, and System Tests
-      #=================================================================
+      #=== STAGE 2: TEST (MUST PASS) ===
       - name: 🧪 Run Unit Tests
-        # Unit tests don't strictly need secrets if properly mocked, but good to have just in case
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           cd backend
-          echo "Running unit tests..."
           pytest tests/unit/ -v --tb=short
+          # ❌ NO || echo - FAILS pipeline if tests fail
       
       - name: 🔗 Run Integration Tests
-        # Integration tests DEFINITELY need these secrets to work
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           cd backend
-          echo "Running integration tests..."
           pytest tests/integration/ -v --tb=short
+          # ❌ NO || echo
       
-      - name: ✅ Test Stage Complete
-        run: echo "✅ Test stage passed - All tests passing"
-      
-      #=================================================================
-      # STAGE 3: COVERAGE - Measure Code Coverage (≥75% required)
-      #=================================================================
+      #=== STAGE 3: COVERAGE (≥75% REQUIRED) ===
       - name: 📊 Generate Coverage Report
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -82,111 +56,71 @@ jobs:
         run: |
           cd backend
           pytest tests/ --cov=src --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=75
-      
-      - name: 📈 Coverage Summary
-        run: |
-          cd backend
-          echo "Coverage report generated in htmlcov/"
-          coverage report --show-missing || true
+          # ❌ NO || echo - FAILS if coverage < 75%
       
       - name: 💾 Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-${{ github.run_number }}
+          name: coverage-report
           path: backend/htmlcov/
-          retention-days: 30
       
-      - name: ✅ Coverage Stage Complete
-        run: echo "✅ Coverage stage passed - Coverage ≥75%"
-      
-      #=================================================================
-      # STAGE 4: LINT - Code Quality Check (Score ≥7.5/10 required)
-      #=================================================================
+      #=== STAGE 4: LINT (≥7.5 REQUIRED) ===
       - name: 🔍 Run Pylint
         run: |
           cd backend
-          # The || true ensures the pipeline doesn't fail immediately if score is low, 
-          # but you might want to remove it if you WANT it to fail on low score.
-          pylint src/ --output-format=text --reports=y --score=yes --fail-under=7.5 | tee pylint-report.txt || true
-      
-      - name: 📄 Lint Summary
-        run: |
-          cd backend
-          echo "Pylint report saved to pylint-report.txt"
-          tail -20 pylint-report.txt || true
+          pylint src/ --fail-under=7.5 --output-format=text --reports=y | tee pylint-report.txt
+          # ❌ NO || true - FAILS if score < 7.5
       
       - name: 💾 Upload Lint Report
         uses: actions/upload-artifact@v4
         with:
-          name: lint-report-${{ github.run_number }}
+          name: lint-report
           path: backend/pylint-report.txt
-          retention-days: 30
       
-      - name: ✅ Lint Stage Complete
-        run: echo "✅ Lint stage passed - Code quality score ≥7.5/10"
-      
-      #=================================================================
-      # STAGE 5: SECURITY - Vulnerability Scanning
-      #=================================================================
-      - name: 🛡️ Run Bandit Security Scan
+      #=== STAGE 5: SECURITY ===
+      - name: 🛡️ Run Security Scans
         run: |
           cd backend
-          bandit -r src/ -f txt -o bandit-report.txt || true
-          cat bandit-report.txt || true
-      
-      - name: 🔒 Check Dependency Vulnerabilities
-        run: |
-          cd backend
-          safety check --output text | tee safety-report.txt || true
+          bandit -r src/ -f json -o bandit-report.json
+          safety check --output json > safety-report.json || true
+          # Security can warn but document issues
       
       - name: 💾 Upload Security Reports
         uses: actions/upload-artifact@v4
         with:
-          name: security-reports-${{ github.run_number }}
+          name: security-reports
           path: |
-            backend/bandit-report.txt
-            backend/safety-report.txt
-          retention-days: 30
+            backend/bandit-report.json
+            backend/safety-report.json
       
-      - name: ✅ Security Stage Complete
-        run: echo "✅ Security stage passed - No critical vulnerabilities"
-      
-      #=================================================================
-      # STAGE 6: DEPLOY/ARTIFACT - Package Deployment Artifact
-      #=================================================================
+      #=== STAGE 6: DEPLOYMENT ARTIFACT ===
       - name: 📦 Create Deployment Package
+        if: success()  # Only if all above stages pass
         run: |
-          mkdir -p deployment-artifact
+          mkdir -p deployment-artifact/backend
           
-          # Copy backend source code
-          cp -r backend/src/ deployment-artifact/
-          cp -r backend/tests/ deployment-artifact/
-          
-          # Copy requirements
-          cp backend/requirements.txt deployment-artifact/
-          # Use '|| true' for optional files to avoid failure if they don't exist
-          cp backend/.pylintrc deployment-artifact/ || true
-          cp backend/pytest.ini deployment-artifact/ || true
+          # Copy source code
+          cp -r backend/src/ deployment-artifact/backend/
+          cp backend/requirements.txt deployment-artifact/backend/
           
           # Copy reports
-          cp -r backend/htmlcov/ deployment-artifact/coverage-report/ || true
-          cp backend/pylint-report.txt deployment-artifact/ || true
-          cp backend/bandit-report.txt deployment-artifact/ || true
-          cp backend/safety-report.txt deployment-artifact/ || true
+          cp -r backend/htmlcov/ deployment-artifact/coverage-report/
+          cp backend/pylint-report.txt deployment-artifact/
+          cp backend/bandit-report.json deployment-artifact/
+          cp backend/safety-report.json deployment-artifact/
           
-          # Copy documentation
-          cp README.md deployment-artifact/ || true
-          cp -r docs/ deployment-artifact/docs/ || true
+          # Copy README
+          cp README.md deployment-artifact/
           
           # Create metadata
           echo "Build Date: $(date)" > deployment-artifact/BUILD_INFO.txt
           echo "Commit: ${{ github.sha }}" >> deployment-artifact/BUILD_INFO.txt
-          echo "Branch: ${{ github.ref_name }}" >> deployment-artifact/BUILD_INFO.txt
-          echo "Triggered by: ${{ github.actor }}" >> deployment-artifact/BUILD_INFO.txt
-          echo "Python Version: ${{ matrix.python-version }}" >> deployment-artifact/BUILD_INFO.txt
+          echo "Coverage: ≥75%" >> deployment-artifact/BUILD_INFO.txt
+          echo "Lint Score: ≥7.5" >> deployment-artifact/BUILD_INFO.txt
           
-          # Create archive
-          zip -r sbs-deployment-${{ github.run_number }}.zip deployment-artifact/
+          # Create zip
+          cd deployment-artifact
+          zip -r ../sbs-deployment-${{ github.run_number }}.zip .
       
       - name: 📤 Upload Deployment Artifact
         uses: actions/upload-artifact@v4
@@ -194,28 +128,3 @@ jobs:
           name: sbs-deployment-${{ github.run_number }}
           path: sbs-deployment-${{ github.run_number }}.zip
           retention-days: 90
-      
-      - name: ✅ Deployment Stage Complete
-        run: echo "✅ Deployment artifact created successfully"
-      
-      #=================================================================
-      # FINAL: Pipeline Summary
-      #=================================================================
-      - name: 🎉 Pipeline Success
-        if: success()
-        run: |
-          echo "================================================"
-          echo "✅ CI/CD Pipeline Completed Successfully!"
-          echo "================================================"
-          echo "All 6 stages passed:"
-          echo "  1. ✅ Build - Dependencies installed"
-          echo "  2. ✅ Test - All tests passing"
-          echo "  3. ✅ Coverage - ≥75% code coverage"
-          echo "  4. ✅ Lint - Code quality score ≥7.5/10"
-          echo "  5. ✅ Security - No critical vulnerabilities"
-          echo "  6. ✅ Artifact - Deployment package created"
-          echo "================================================"
-          echo "Run #${{ github.run_number }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "================================================"

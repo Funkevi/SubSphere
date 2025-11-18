@@ -1,0 +1,230 @@
+.admin-dashboard {
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding: 40px 20px;
+}
+
+.admin-header {
+  max-width: 1200px;
+  margin: 0 auto 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-header h1 {
+  color: #333;
+  font-size: 32px;
+}
+
+.create-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.create-btn:hover {
+  transform: scale(1.05);
+}
+
+.loading {
+  text-align: center;
+  padding: 100px 20px;
+  font-size: 20px;
+  color: #666;
+}
+
+.error-banner {
+  max-width: 1200px;
+  margin: 0 auto 30px;
+  padding: 16px;
+  background-color: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.plans-table {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: #f8f9fa;
+}
+
+th {
+  padding: 16px;
+  text-align: left;
+  color: #555;
+  font-weight: 600;
+  border-bottom: 2px solid #e9ecef;
+}
+
+td {
+  padding: 16px;
+  border-bottom: 1px solid #e9ecef;
+  color: #333;
+}
+
+.status {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status.inactive {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.edit-btn,
+.delete-btn {
+  padding: 6px 16px;
+  margin-right: 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.edit-btn {
+  background: #667eea;
+  color: white;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.edit-btn:hover,
+.delete-btn:hover {
+  opacity: 0.8;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content h2 {
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.form-group.checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.form-group.checkbox label {
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+
+.form-group.checkbox input {
+  width: auto;
+  margin-right: 8px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.cancel-btn,
+.save-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background: #e9ecef;
+  color: #333;
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.cancel-btn:hover,
+.save-btn:hover {
+  opacity: 0.9;
+}
