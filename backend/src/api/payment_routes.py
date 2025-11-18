@@ -2,12 +2,12 @@
 Payment API Routes
 Mock payment processing endpoints for SIM-83
 """
+from uuid import uuid4
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Header, Body
 from src.models.payment import CreatePaymentRequest, PaymentResponse
 from src.auth.supabase_auth import supabase_auth
 from src.auth.rbac import require_role
-from uuid import uuid4
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
@@ -18,7 +18,7 @@ async def mock_payment(
 ):
     """
     SIM-83: Mock payment endpoint for testing
-    
+
     - Simulates payment processing without real gateway
     - Returns success or failure based on should_succeed flag
     - Public endpoint (no auth required for testing)
@@ -49,20 +49,20 @@ async def mock_payment(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error processing payment: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error processing payment: {str(e)}") from e
 
 
 @router.get("/history/{subscription_id}")
 @require_role(["admin", "subscriber"])
 async def get_payment_history(
     subscription_id: str,
-    authorization: Optional[str] = Header(None),
-    token: str = None,
-    current_user: dict = None
+    _authorization: Optional[str] = Header(None),
+    _token: str = None,
+    _current_user: dict = None
 ):
     """
     Get payment history for a subscription
-    
+
     - Requires authentication (admin or subscriber)
     - Returns all payments ordered by creation date
     """
@@ -79,20 +79,20 @@ async def get_payment_history(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error fetching payment history: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error fetching payment history: {str(e)}") from e
 
 
 @router.get("/status/{payment_id}", response_model=PaymentResponse)
 @require_role(["admin", "subscriber"])
 async def get_payment_status(
     payment_id: str,
-    authorization: Optional[str] = Header(None),
-    token: str = None,
-    current_user: dict = None
+    _authorization: Optional[str] = Header(None),
+    _token: str = None,
+    _current_user: dict = None
 ):
     """
     Get payment status by ID
-    
+
     - Requires authentication
     - Returns payment details
     """
@@ -108,5 +108,5 @@ async def get_payment_status(
 
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=404, detail="Payment not found")
+    except Exception:
+        raise HTTPException(status_code=404, detail="Payment not found") from None

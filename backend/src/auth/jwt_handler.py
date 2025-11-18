@@ -2,23 +2,23 @@
 JWT Token Handler
 Handles generation and verification of JWT tokens for authentication
 """
-import jwt
 from datetime import datetime, timedelta, timezone
+import jwt
 from src.config import settings
 
 
 class JWTHandler:
     """Handler for JWT token operations"""
-    
+
     @staticmethod
     def generate_token(user_id: str, role: str = "subscriber") -> str:
         """
         Generate JWT token for authenticated user
-        
+
         Args:
             user_id: Unique user identifier
             role: User role (default: subscriber)
-            
+
         Returns:
             str: Encoded JWT token
         """
@@ -30,15 +30,15 @@ class JWTHandler:
         }
         token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
         return token
-    
+
     @staticmethod
     def verify_token(token: str) -> dict:
         """
         Verify JWT token and return payload
-        
+
         Args:
             token: JWT token string
-            
+
         Returns:
             dict: {"valid": bool, "payload": dict} or {"valid": False, "error": str}
         """

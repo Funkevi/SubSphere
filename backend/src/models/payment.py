@@ -2,9 +2,8 @@
 Payment Models
 Pydantic models for payment operations
 """
-from pydantic import BaseModel, Field
 from typing import Optional, Literal
-from datetime import datetime
+from pydantic import BaseModel, Field
 
 
 class CreatePaymentRequest(BaseModel):

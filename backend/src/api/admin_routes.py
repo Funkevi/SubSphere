@@ -11,10 +11,10 @@ router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 @router.get("/dashboard")
 @require_role(["admin"])
-async def admin_dashboard(authorization: Optional[str] = Header(None), token: str = None, current_user: dict = None):
+async def admin_dashboard(_authorization: Optional[str] = Header(None), _token: str = None, current_user: dict = None):
     """
     Admin dashboard endpoint
-    
+
     - Only accessible by admin role
     - Returns admin-specific data
     """
@@ -27,7 +27,7 @@ async def admin_dashboard(authorization: Optional[str] = Header(None), token: st
 
 @router.get("/users")
 @require_role(["admin"])
-async def list_users(authorization: Optional[str] = Header(None), token: str = None, current_user: dict = None):
+async def list_users(_authorization: Optional[str] = Header(None), _token: str = None, current_user: dict = None):
     """
     List all users (admin only)
     """
@@ -39,10 +39,10 @@ async def list_users(authorization: Optional[str] = Header(None), token: str = N
 
 @router.get("/stats")
 @require_role(["admin", "finance"])
-async def get_stats(authorization: Optional[str] = Header(None), token: str = None, current_user: dict = None):
+async def get_stats(_authorization: Optional[str] = Header(None), _token: str = None, current_user: dict = None):
     """
     Get system statistics
-    
+
     - Accessible by admin and finance roles
     """
     return {

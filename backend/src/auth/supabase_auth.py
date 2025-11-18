@@ -33,7 +33,7 @@ class SupabaseAuth:
                 "password": password
             })
             return {"success": True, "user": response.user, "session": response.session}
-        except Exception as e:
+        except Exception:
             return {"success": False, "error": "Invalid credentials", "code": 401}
 
     async def get_user_profile(self, user_id: str):

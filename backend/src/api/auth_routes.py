@@ -61,19 +61,19 @@ async def register(request: RegisterRequest):
     is_valid_email, email_error = Validators.validate_email(request.email)
     if not is_valid_email:
         raise HTTPException(status_code=400, detail=email_error)
-    
+
     # Validate password
     is_valid_password, password_error = Validators.validate_password(request.password)
     if not is_valid_password:
         raise HTTPException(status_code=400, detail=password_error)
-    
+
     # Register with Supabase
     result = await supabase_auth.sign_up(request.email, request.password)
-    
+
     if not result["success"]:
         status_code = result.get("code", 400)
         raise HTTPException(status_code=status_code, detail=result["error"])
-    
+
     return RegisterResponse(
         success=True,
         message="User registered successfully",
@@ -88,29 +88,29 @@ async def login(request: LoginRequest):
     is_valid_email, email_error = Validators.validate_email(request.email)
     if not is_valid_email:
         raise HTTPException(status_code=400, detail=email_error)
-    
+
     # Sign in with Supabase
     result = await supabase_auth.sign_in(request.email, request.password)
-    
+
     if not result["success"]:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
+
     # Get user profile with role
     user_id = str(result["user"].id)
     profile_result = await supabase_auth.get_user_profile(user_id)
-    
+
     # Extract role_id (UUID)
     if profile_result["success"]:
         role_id = profile_result["profile"].get("role_id", "422b8113-a6d2-404f-9cf0-9ccdf48c0c03")
     else:
         role_id = "422b8113-a6d2-404f-9cf0-9ccdf48c0c03"
-    
+
     # Convert UUID to role name
     role_name = get_role_name(role_id)
-    
+
     # Generate JWT token with role NAME (not UUID)
     access_token = JWTHandler.generate_token(user_id, role_name)
-    
+
     return LoginResponse(
         success=True,
         access_token=access_token,
@@ -126,17 +126,17 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     """Get current authenticated user info"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing authorization header")
-    
+
     try:
         token = authorization.split(" ")[1]
-    except IndexError:
-        raise HTTPException(status_code=401, detail="Invalid authorization header format")
-    
+    except IndexError as exc:
+        raise HTTPException(status_code=401, detail="Invalid authorization header format") from exc
+
     result = JWTHandler.verify_token(token)
-    
+
     if not result["valid"]:
         raise HTTPException(status_code=401, detail=result["error"])
-    
+
     return {
         "user_id": result["payload"]["user_id"],
         "role": result["payload"]["role"]

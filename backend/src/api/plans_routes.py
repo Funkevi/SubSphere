@@ -2,12 +2,12 @@
 Subscription Plans API Routes
 Admin-only endpoints for managing subscription plans
 """
+from datetime import datetime, timezone
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Header, Body
 from src.models.plan import CreatePlanRequest, UpdatePlanRequest, PlanResponse
 from src.auth.supabase_auth import supabase_auth
 from src.auth.rbac import require_role
-from datetime import datetime, timezone
 
 router = APIRouter(prefix="/api/plans", tags=["plans"])
 
@@ -16,9 +16,9 @@ router = APIRouter(prefix="/api/plans", tags=["plans"])
 @require_role(["admin"])
 async def create_plan(
     plan: CreatePlanRequest = Body(..., embed=True),
-    authorization: Optional[str] = Header(None),
-    token: str = None,
-    current_user: dict = None
+    _authorization: Optional[str] = Header(None),
+    _token: str = None,
+    _current_user: dict = None
 ):
     """
     SIM-71: Create subscription plan (admin only)
@@ -42,7 +42,7 @@ async def create_plan(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error creating plan: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error creating plan: {str(e)}") from e
 
 
 @router.get("", response_model=List[PlanResponse])
@@ -50,16 +50,16 @@ async def list_plans(active_only: bool = True):
     """Get all subscription plans"""
     try:
         query = supabase_auth.service_client.table("subscription_plans").select("*")
-        
+
         if active_only:
             query = query.eq("is_active", True)
-        
+
         response = query.execute()
-        
+
         return [PlanResponse(**plan) for plan in response.data]
-    
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching plans: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching plans: {str(e)}") from e
 
 
 @router.get("/{plan_id}", response_model=PlanResponse)
@@ -74,21 +74,21 @@ async def get_plan(plan_id: str):
             raise HTTPException(status_code=404, detail="Plan not found")
 
         return PlanResponse(**response.data)
-    
+
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=404, detail="Plan not found")
+    except Exception:
+        raise HTTPException(status_code=404, detail="Plan not found") from None
 
 
 @router.put("/{plan_id}", response_model=PlanResponse)
 @require_role(["admin"])
 async def update_plan(
     plan_id: str,
-    plan: UpdatePlanRequest = Body(..., embed=True),  # FIXED: Added embed=True
-    authorization: Optional[str] = Header(None),
-    token: str = None,
-    current_user: dict = None
+    plan: UpdatePlanRequest = Body(..., embed=True),
+    _authorization: Optional[str] = Header(None),
+    _token: str = None,
+    _current_user: dict = None
 ):
     """
     SIM-71: Update subscription plan (admin only)
@@ -96,7 +96,7 @@ async def update_plan(
     try:
         # Build update data (exclude unset fields)
         update_data = plan.dict(exclude_unset=True)
-        
+
         if "features" in update_data and update_data["features"]:
             update_data["features"] = [f.dict() for f in plan.features]
 
@@ -112,16 +112,16 @@ async def update_plan(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error updating plan: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error updating plan: {str(e)}") from e
 
 
 @router.delete("/{plan_id}", status_code=204)
 @require_role(["admin"])
 async def delete_plan(
     plan_id: str,
-    authorization: Optional[str] = Header(None),
-    token: str = None,
-    current_user: dict = None
+    _authorization: Optional[str] = Header(None),
+    _token: str = None,
+    _current_user: dict = None
 ):
     """
     SIM-71: Soft delete subscription plan (admin only)
@@ -136,8 +136,8 @@ async def delete_plan(
             raise HTTPException(status_code=404, detail="Plan not found")
 
         return None
-    
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error deleting plan: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error deleting plan: {str(e)}") from e

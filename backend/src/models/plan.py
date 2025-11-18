@@ -2,9 +2,8 @@
 Subscription Plan Models
 Pydantic models for plan creation, updates, and responses
 """
-from pydantic import BaseModel, Field
 from typing import List, Optional
-from datetime import datetime
+from pydantic import BaseModel, Field
 
 
 class PlanFeature(BaseModel):

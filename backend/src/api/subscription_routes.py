@@ -2,13 +2,12 @@
 Subscription API Routes
 Handles subscription CRUD operations
 """
-from typing import Optional
 from datetime import datetime, timedelta
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Header, Body
 from pydantic import BaseModel
 from src.auth.supabase_auth import supabase_auth
 from src.auth.rbac import require_role
-from uuid import uuid4
 
 router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
 
@@ -23,13 +22,13 @@ class CreateSubscriptionRequest(BaseModel):
 @require_role(["admin", "subscriber"])
 async def create_subscription(
     subscription: CreateSubscriptionRequest = Body(..., embed=True),
-    authorization: Optional[str] = Header(None),
-    token: str = None,
-    current_user: dict = None
+    _authorization: Optional[str] = Header(None),
+    _token: str = None,
+    _current_user: dict = None
 ):
     """
     Create a new subscription
-    
+
     - Requires authentication
     - Creates subscription record in database
     - Sets expiry based on plan billing cycle
@@ -39,15 +38,15 @@ async def create_subscription(
         plan_response = supabase_auth.service_client.table("subscription_plans").select(
             "duration_days"
         ).eq("id", subscription.plan_id).single().execute()
-        
+
         if not plan_response.data:
             raise HTTPException(status_code=404, detail="Plan not found")
-        
+
         # Calculate expiry date based on plan duration
         duration_days = plan_response.data.get("duration_days", 30)
         current_period_start = datetime.utcnow()
         expires_at = current_period_start + timedelta(days=duration_days)
-        
+
         response = supabase_auth.service_client.table("subscriptions").insert({
             "user_id": subscription.user_id,
             "plan_id": subscription.plan_id,
@@ -64,20 +63,20 @@ async def create_subscription(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error creating subscription: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error creating subscription: {str(e)}") from e
 
 
 @router.get("/user/{user_id}")
 @require_role(["admin", "subscriber"])
 async def get_user_subscriptions(
     user_id: str,
-    authorization: Optional[str] = Header(None),
-    token: str = None,
-    current_user: dict = None
+    _authorization: Optional[str] = Header(None),
+    _token: str = None,
+    _current_user: dict = None
 ):
     """
     Get all subscriptions for a user
-    
+
     - Requires authentication
     - Returns list of subscriptions with plan details
     """
@@ -89,20 +88,20 @@ async def get_user_subscriptions(
         return response.data
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error fetching subscriptions: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error fetching subscriptions: {str(e)}") from e
 
 
 @router.get("/{subscription_id}")
 @require_role(["admin", "subscriber"])
 async def get_subscription(
     subscription_id: str,
-    authorization: Optional[str] = Header(None),
-    token: str = None,
-    current_user: dict = None
+    _authorization: Optional[str] = Header(None),
+    _token: str = None,
+    _current_user: dict = None
 ):
     """
     Get subscription by ID
-    
+
     - Requires authentication
     - Returns subscription with plan details
     """
@@ -118,8 +117,8 @@ async def get_subscription(
 
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=404, detail="Subscription not found")
+    except Exception:
+        raise HTTPException(status_code=404, detail="Subscription not found") from None
 
 
 @router.put("/{subscription_id}")
@@ -127,13 +126,13 @@ async def get_subscription(
 async def update_subscription(
     subscription_id: str,
     subscription: CreateSubscriptionRequest = Body(..., embed=True),
-    authorization: Optional[str] = Header(None),
-    token: str = None,
-    current_user: dict = None
+    _authorization: Optional[str] = Header(None),
+    _token: str = None,
+    _current_user: dict = None
 ):
     """
     Update subscription
-    
+
     - Requires authentication
     - Updates subscription status or plan
     """
@@ -151,4 +150,4 @@ async def update_subscription(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error updating subscription: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error updating subscription: {str(e)}") from e
