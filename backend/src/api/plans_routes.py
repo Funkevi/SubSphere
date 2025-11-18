@@ -14,11 +14,11 @@ router = APIRouter(prefix="/api/plans", tags=["plans"])
 
 @router.post("", response_model=PlanResponse, status_code=201)
 @require_role(["admin"])
-async def create_plan(
+async def create_plan(  # pylint: disable=unused-argument
     plan: CreatePlanRequest = Body(..., embed=True),
-    _authorization: Optional[str] = Header(None),
-    _token: str = None,
-    _current_user: dict = None
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
 ):
     """
     SIM-71: Create subscription plan (admin only)
@@ -83,12 +83,12 @@ async def get_plan(plan_id: str):
 
 @router.put("/{plan_id}", response_model=PlanResponse)
 @require_role(["admin"])
-async def update_plan(
+async def update_plan(  # pylint: disable=unused-argument
     plan_id: str,
     plan: UpdatePlanRequest = Body(..., embed=True),
-    _authorization: Optional[str] = Header(None),
-    _token: str = None,
-    _current_user: dict = None
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
 ):
     """
     SIM-71: Update subscription plan (admin only)
@@ -117,11 +117,11 @@ async def update_plan(
 
 @router.delete("/{plan_id}", status_code=204)
 @require_role(["admin"])
-async def delete_plan(
+async def delete_plan(  # pylint: disable=unused-argument
     plan_id: str,
-    _authorization: Optional[str] = Header(None),
-    _token: str = None,
-    _current_user: dict = None
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
 ):
     """
     SIM-71: Soft delete subscription plan (admin only)

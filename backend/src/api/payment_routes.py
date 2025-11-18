@@ -54,11 +54,11 @@ async def mock_payment(
 
 @router.get("/history/{subscription_id}")
 @require_role(["admin", "subscriber"])
-async def get_payment_history(
+async def get_payment_history(  # pylint: disable=unused-argument
     subscription_id: str,
-    _authorization: Optional[str] = Header(None),
-    _token: str = None,
-    _current_user: dict = None
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
 ):
     """
     Get payment history for a subscription
@@ -84,11 +84,11 @@ async def get_payment_history(
 
 @router.get("/status/{payment_id}", response_model=PaymentResponse)
 @require_role(["admin", "subscriber"])
-async def get_payment_status(
+async def get_payment_status(  # pylint: disable=unused-argument
     payment_id: str,
-    _authorization: Optional[str] = Header(None),
-    _token: str = None,
-    _current_user: dict = None
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
 ):
     """
     Get payment status by ID

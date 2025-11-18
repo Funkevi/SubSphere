@@ -20,11 +20,11 @@ class CreateSubscriptionRequest(BaseModel):
 
 @router.post("", status_code=201)
 @require_role(["admin", "subscriber"])
-async def create_subscription(
+async def create_subscription(  # pylint: disable=unused-argument
     subscription: CreateSubscriptionRequest = Body(..., embed=True),
-    _authorization: Optional[str] = Header(None),
-    _token: str = None,
-    _current_user: dict = None
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
 ):
     """
     Create a new subscription
@@ -68,11 +68,11 @@ async def create_subscription(
 
 @router.get("/user/{user_id}")
 @require_role(["admin", "subscriber"])
-async def get_user_subscriptions(
+async def get_user_subscriptions(  # pylint: disable=unused-argument
     user_id: str,
-    _authorization: Optional[str] = Header(None),
-    _token: str = None,
-    _current_user: dict = None
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
 ):
     """
     Get all subscriptions for a user
@@ -93,11 +93,11 @@ async def get_user_subscriptions(
 
 @router.get("/{subscription_id}")
 @require_role(["admin", "subscriber"])
-async def get_subscription(
+async def get_subscription(  # pylint: disable=unused-argument
     subscription_id: str,
-    _authorization: Optional[str] = Header(None),
-    _token: str = None,
-    _current_user: dict = None
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
 ):
     """
     Get subscription by ID
@@ -123,12 +123,12 @@ async def get_subscription(
 
 @router.put("/{subscription_id}")
 @require_role(["admin", "subscriber"])
-async def update_subscription(
+async def update_subscription(  # pylint: disable=unused-argument
     subscription_id: str,
     subscription: CreateSubscriptionRequest = Body(..., embed=True),
-    _authorization: Optional[str] = Header(None),
-    _token: str = None,
-    _current_user: dict = None
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
 ):
     """
     Update subscription
