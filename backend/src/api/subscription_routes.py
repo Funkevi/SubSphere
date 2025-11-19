@@ -271,3 +271,123 @@ async def update_subscription(  # pylint: disable=unused-argument
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error updating subscription: {str(e)}") from e
+
+
+@router.post("/{subscription_id}/pause", status_code=200)
+@require_role(["subscriber", "admin"])
+async def pause_subscription(
+    subscription_id: str,
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
+):
+    """
+    SIM-101: Pause subscription
+    Sets status to 'paused' and stores pause_date
+    """
+    try:
+        if not validate_uuid(subscription_id):
+            raise HTTPException(status_code=400, detail="Invalid subscription_id format")
+        
+        pause_date = datetime.now(timezone.utc)
+        
+        update_data = {
+            "status": "paused",
+            "paused_at": pause_date.isoformat()
+        }
+        
+        response = supabase_auth.service_client.table("subscriptions").update(
+            update_data
+        ).eq("id", subscription_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+        
+        return {
+            "success": True,
+            "message": "Subscription paused successfully",
+            "subscription_id": subscription_id,
+            "paused_at": pause_date.isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error pausing subscription: {str(e)}") from e
+
+
+@router.post("/{subscription_id}/resume", status_code=200)
+@require_role(["subscriber", "admin"])
+async def resume_subscription(
+    subscription_id: str,
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
+):
+    """
+    SIM-101: Resume subscription
+    Sets status to 'active' and recalculates next_billing_date
+    Extends trial_end for trial subscriptions by paused duration
+    """
+    try:
+        if not validate_uuid(subscription_id):
+            raise HTTPException(status_code=400, detail="Invalid subscription_id format")
+        
+        # Fetch current subscription
+        sub_response = supabase_auth.service_client.table("subscriptions").select(
+            "*"
+        ).eq("id", subscription_id).single().execute()
+        
+        if not sub_response.data:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+        
+        subscription = sub_response.data
+        
+        if subscription["status"] != "paused":
+            raise HTTPException(status_code=400, detail="Subscription is not paused")
+        
+        paused_at = subscription.get("paused_at")
+        if not paused_at:
+            raise HTTPException(status_code=400, detail="Paused at timestamp not found")
+        
+        resume_date = datetime.now(timezone.utc)
+        paused_at_dt = datetime.fromisoformat(paused_at.replace('Z', '+00:00'))
+        paused_duration = resume_date - paused_at_dt
+        
+        update_data = {
+            "status": "active",
+            "resumed_at": resume_date.isoformat(),
+        }
+        
+        if subscription["status"] == "paused":
+            # Extend trial_end and next_billing_date for trial subscription
+            if subscription["trial_end"]:
+                trial_end_dt = datetime.fromisoformat(subscription["trial_end"].replace('Z', '+00:00'))
+                new_trial_end = trial_end_dt + paused_duration
+                update_data["trial_end"] = new_trial_end.isoformat()
+                update_data["next_billing_date"] = (new_trial_end + timedelta(days=1)).isoformat()
+            else:
+                # For non-trial active subscriptions, extend next_billing_date
+                if subscription["next_billing_date"]:
+                    current_billing_dt = datetime.fromisoformat(subscription["next_billing_date"].replace('Z', '+00:00'))
+                    new_billing_date = current_billing_dt + paused_duration
+                    update_data["next_billing_date"] = new_billing_date.isoformat()
+                else:
+                    update_data["next_billing_date"] = (resume_date + timedelta(days=30)).isoformat()
+        
+        response = supabase_auth.service_client.table("subscriptions").update(
+            update_data
+        ).eq("id", subscription_id).execute()
+        
+        return {
+            "success": True,
+            "message": "Subscription resumed successfully",
+            "subscription_id": subscription_id,
+            "next_billing_date": update_data.get("next_billing_date"),
+            "trial_end": update_data.get("trial_end")
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error resuming subscription: {str(e)}") from e
