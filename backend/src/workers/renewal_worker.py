@@ -213,9 +213,114 @@ class RenewalWorker:
             return False
     
     def process_retries(self) -> int:
-        """Process payment retries"""
-        # Placeholder for retry logic
-        return 0
+        """Process payment retries for failed renewals (SIM-118)"""
+        try:
+            # Find subscriptions with failed payments due for retry
+            response = self.db.table("subscriptions").select(
+                "*"
+            ).eq("status", "payment_failed").execute()
+            
+            count = 0
+            for subscription in response.data:
+                if subscription.get("retry_date"):
+                    retry_date = datetime.fromisoformat(
+                        subscription["retry_date"].replace('Z', '+00:00')
+                    ).date()
+                    
+                    if retry_date == self.today:
+                        success = self.retry_payment(subscription)
+                        if success:
+                            count += 1
+            
+            return count
+            
+        except Exception as e:
+            logger.error(f"Error processing retries: {e}")
+            return 0
+    
+    def retry_payment(self, subscription) -> bool:
+        """Retry payment for failed subscription (SIM-118)"""
+        try:
+            subscription_id = subscription["id"]
+            retry_count = subscription.get("retry_count", 0)
+            
+            # Max 3 retries
+            if retry_count >= 3:
+                logger.warning(f"Max retries reached for {subscription_id}, cancelling...")
+                self.cancel_subscription_after_retries(subscription)
+                return False
+            
+            # Get plan for amount
+            plan_response = self.db.table("subscription_plans").select(
+                "*"
+            ).eq("id", subscription["plan_id"]).single().execute()
+            
+            if not plan_response.data:
+                return False
+            
+            plan = plan_response.data
+            
+            # Attempt payment
+            payment_success = self.process_payment(subscription_id, plan["price"])
+            
+            if payment_success:
+                # Payment succeeded - reactivate subscription
+                next_billing = datetime.now(timezone.utc) + timedelta(days=plan.get("duration_days", 30))
+                
+                self.db.table("subscriptions").update({
+                    "status": "active",
+                    "retry_count": 0,
+                    "retry_date": None,
+                    "next_billing_date": next_billing.isoformat()
+                }).eq("id", subscription_id).execute()
+                
+                # Log event
+                self.log_event(subscription_id, "retry_payment_success", plan["price"])
+                
+                logger.info(f"✓ Retry payment succeeded for {subscription_id} (attempt {retry_count + 1})")
+                return True
+            else:
+                # Payment failed - schedule next retry
+                new_retry_count = retry_count + 1
+                
+                # Retry intervals: day 1, 3, 7 after failure
+                retry_intervals = {1: 1, 2: 3, 3: 7}
+                days_until_retry = retry_intervals.get(new_retry_count, 7)
+                
+                next_retry_date = datetime.now(timezone.utc) + timedelta(days=days_until_retry)
+                
+                self.db.table("subscriptions").update({
+                    "retry_count": new_retry_count,
+                    "retry_date": next_retry_date.isoformat()
+                }).eq("id", subscription_id).execute()
+                
+                logger.warning(f"Retry payment failed for {subscription_id} (attempt {new_retry_count})")
+                logger.info(f"Next retry scheduled for {next_retry_date.date()}")
+                
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error retrying payment for {subscription['id']}: {e}")
+            return False
+    
+    def cancel_subscription_after_retries(self, subscription) -> None:
+        """Cancel subscription after max retry attempts (SIM-118)"""
+        try:
+            subscription_id = subscription["id"]
+            
+            self.db.table("subscriptions").update({
+                "status": "cancelled",
+                "cancelled_at": datetime.now(timezone.utc).isoformat(),
+                "cancellation_reason": "payment_failed_max_retries"
+            }).eq("id", subscription_id).execute()
+            
+            # Log event
+            self.log_event(subscription_id, "cancelled_after_retries", 0)
+            
+            logger.warning(f"⚠ Cancelled subscription {subscription_id} after 3 failed payment attempts")
+            
+        except Exception as e:
+            logger.error(f"Error cancelling subscription {subscription['id']}: {e}")
     
     def log_event(self, subscription_id: str, action: str, amount: float) -> None:
         """Log subscription event"""
