@@ -192,7 +192,7 @@ class RenewalWorker:
         import random
         
         # 90% success rate for testing
-        should_succeed = random.random() < 0.9
+        should_succeed = random.random() < 0.9  # nosec B311 - Mock payment for testing only
         
         try:
             payment_data = {
