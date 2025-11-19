@@ -1,5 +1,24 @@
 import re
+import uuid
 from src.config import settings
+
+
+def validate_uuid(uuid_string: str) -> bool:
+    """
+    Validate if a string is a valid UUID format
+    
+    Args:
+        uuid_string: String to validate as UUID
+        
+    Returns:
+        bool: True if valid UUID, False otherwise
+    """
+    try:
+        uuid.UUID(str(uuid_string))
+        return True
+    except (ValueError, AttributeError, TypeError):
+        return False
+
 
 class Validators:
     @staticmethod
