@@ -391,3 +391,68 @@ async def resume_subscription(
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error resuming subscription: {str(e)}") from e
+
+
+@router.post("/{subscription_id}/cancel", status_code=200)
+@require_role(["subscriber", "admin"])
+async def cancel_subscription(
+    subscription_id: str,
+    authorization: Optional[str] = Header(None),
+    token: str = None,
+    current_user: dict = None
+):
+    """
+    SIM-95: Cancel subscription
+    - Updates status to 'cancelled'
+    - Clears next_billing_date
+    - Logs cancellation event
+    """
+    try:
+        if not validate_uuid(subscription_id):
+            raise HTTPException(status_code=400, detail="Invalid subscription_id format")
+        
+        # Verify subscription exists
+        sub_response = supabase_auth.service_client.table("subscriptions").select(
+            "*"
+        ).eq("id", subscription_id).single().execute()
+        
+        if not sub_response.data:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+        
+        # Update subscription
+        update_data = {
+            "status": "cancelled",
+            "next_billing_date": None,
+            "cancelled_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        response = supabase_auth.service_client.table("subscriptions").update(
+            update_data
+        ).eq("id", subscription_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=400, detail="Failed to cancel subscription")
+        
+        # Log cancellation event
+        audit_log = {
+            "subscription_id": subscription_id,
+            "action": "cancelled",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "user_id": current_user["user_id"]
+        }
+        
+        try:
+            supabase_auth.service_client.table("audit_logs").insert(audit_log).execute()
+        except Exception as e:
+            print(f"Warning: Could not log cancellation: {e}")
+        
+        return {
+            "success": True,
+            "message": "Subscription cancelled successfully",
+            "subscription_id": subscription_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error cancelling subscription: {str(e)}") from e
