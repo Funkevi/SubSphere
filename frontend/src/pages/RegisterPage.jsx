@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import { registerUser } from '../api/auth';
 import './RegisterPage.css';
@@ -18,29 +18,37 @@ export default function RegisterPage() {
 
     try {
       const data = await registerUser(email, password);
-      // Store token and navigate
       localStorage.setItem('token', data.access_token);
+      localStorage.setItem('role', 'subscriber');
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="register-page">
-      <div className="register-container">
-        <h1>Register</h1>
-        <form onSubmit={handleSubmit}>
+    <div className="auth-page">
+      <div className="auth-card glass-panel">
+        <div className="brand-header">
+          <div className="brand-logo">
+            <span className="logo-pulse">⚡</span>
+          </div>
+          <h2>SubSphere</h2>
+          <p className="brand-tagline">Create Your Subscriber Account</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">Email Address</label>
             <input
               id="email"
               type="email"
+              className="form-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
+              placeholder="name@company.com"
               required
             />
           </div>
@@ -50,9 +58,10 @@ export default function RegisterPage() {
             <input
               id="password"
               type="password"
+              className="form-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder="••••••••"
               required
             />
             <PasswordStrengthIndicator password={password} />
@@ -60,14 +69,14 @@ export default function RegisterPage() {
 
           {error && <div className="error-message">{error}</div>}
 
-          <button type="submit" disabled={loading} className="submit-btn">
+          <button type="submit" disabled={loading} className="btn-primary auth-submit-btn">
             {loading ? 'Registering...' : 'Register'}
           </button>
         </form>
 
-        <div className="login-link">
+        <div className="login-link auth-footer">
           Already have an account?{' '}
-          <a href="/login">Login here</a>
+          <Link to="/login" className="auth-link">Login here</Link>
         </div>
       </div>
     </div>

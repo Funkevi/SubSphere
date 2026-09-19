@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { loginUser } from '../api/auth';
 import './LoginPage.css';
 
@@ -17,34 +17,53 @@ export default function LoginPage() {
 
     try {
       const data = await loginUser(email, password);
-      
-      // Token is already stored by loginUser function
-      // Navigate based on role
       if (data.role === 'admin') {
         navigate('/admin');
       } else {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'Login failed. Check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleQuickDemo = (role) => {
+    if (role === 'admin') {
+      localStorage.setItem('token', 'mock-admin-jwt-token');
+      localStorage.setItem('user_id', 'admin-user-001');
+      localStorage.setItem('role', 'admin');
+      navigate('/admin');
+    } else {
+      localStorage.setItem('token', 'mock-subscriber-jwt-token');
+      localStorage.setItem('user_id', 'user-12345');
+      localStorage.setItem('role', 'subscriber');
+      navigate('/dashboard');
+    }
+  };
+
   return (
-    <div className="login-page">
-      <div className="login-container">
-        <h1>Login</h1>
-        <form onSubmit={handleSubmit}>
+    <div className="auth-page">
+      <div className="auth-card glass-panel">
+        <div className="brand-header">
+          <div className="brand-logo">
+            <span className="logo-pulse">⚡</span>
+          </div>
+          <h2>SubSphere</h2>
+          <p className="brand-tagline">Subscription & Billing Intelligence Platform</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">Email Address</label>
             <input
               id="email"
               type="email"
+              className="form-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
+              placeholder="name@company.com"
               required
             />
           </div>
@@ -54,23 +73,36 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
+              className="form-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder="••••••••"
               required
             />
           </div>
 
           {error && <div className="error-message">{error}</div>}
 
-          <button type="submit" disabled={loading} className="submit-btn">
+          <button type="submit" disabled={loading} className="btn-primary auth-submit-btn">
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        <div className="register-link">
+        <div className="demo-credentials-box">
+          <span className="demo-label">Instant Demo Access:</span>
+          <div className="demo-actions">
+            <button type="button" onClick={() => handleQuickDemo('subscriber')} className="demo-badge subscriber">
+              👤 Demo Subscriber
+            </button>
+            <button type="button" onClick={() => handleQuickDemo('admin')} className="demo-badge admin">
+              👑 Demo Admin
+            </button>
+          </div>
+        </div>
+
+        <div className="register-link auth-footer">
           Don't have an account?{' '}
-          <a href="/register">Register here</a>
+          <Link to="/register" className="auth-link">Register here</Link>
         </div>
       </div>
     </div>
