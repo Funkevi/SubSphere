@@ -1,0 +1,129 @@
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.auth-card {
+  max-width: 440px;
+  width: 100%;
+  padding: 2.5rem;
+}
+
+.brand-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.brand-logo {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 1rem;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 25px rgba(99, 102, 241, 0.4);
+}
+
+.logo-pulse {
+  font-size: 1.75rem;
+}
+
+.brand-header h2 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-main);
+  background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.35rem;
+}
+
+.brand-tagline {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.auth-form {
+  margin-bottom: 1.5rem;
+}
+
+.auth-submit-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.875rem;
+}
+
+.error-message {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #f87171;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.demo-credentials-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.demo-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-subtle);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.demo-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.demo-badge {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-glass);
+  color: var(--text-main);
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.demo-badge:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.auth-footer {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.auth-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 0.25rem;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
